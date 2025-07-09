@@ -64,17 +64,26 @@ if video_file:
     # Step 2: Transcribe audio with Whisper
     with st.spinner("🧠 Transcribing audio using Whisper..."):
         try:
-            model = whisper.load_model("base")  # use "medium" or "large" if needed
+            model = whisper.load_model("base")  # You can upgrade to "medium" or "large"
             result = model.transcribe(audio_path)
-            transcript = result["text"]
 
-            # Save transcript
+            segments = result["segments"]
+
+            # Save and display timestamped transcript
+            timestamped_transcript = ""
+            for seg in segments:
+                start = round(seg["start"], 2)
+                end = round(seg["end"], 2)
+                text = seg["text"].strip()
+                timestamped_transcript += f"[{start:.2f} - {end:.2f}] {text}\n"
+
+            # Save to file
             transcript_path = os.path.join("transcripts", f"{unique_id}.txt")
             with open(transcript_path, "w", encoding="utf-8") as f:
-                f.write(transcript)
+                f.write(timestamped_transcript)
 
             st.success("📜 Transcription complete!")
-            st.text_area("📝 Transcript", transcript, height=300)
+            st.text_area("🕒 Transcript with Timestamps", timestamped_transcript, height=400)
 
         except Exception as e:
             st.error(f"❌ Whisper transcription failed: {str(e)}")
