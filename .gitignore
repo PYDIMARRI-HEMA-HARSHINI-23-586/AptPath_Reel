@@ -1,9 +1,7 @@
-__pycache__/
 uploads/
-*.pyc
-*.log
+audio/
+transcripts/
+*.mp4
 *.wav
 *.srt
 *.txt
-*.mp4
-.env
