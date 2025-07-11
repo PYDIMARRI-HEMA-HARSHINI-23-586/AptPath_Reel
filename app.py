@@ -3,35 +3,54 @@ import os
 import subprocess
 import uuid
 import whisper
+import openai
 
-# Page config
+# Configure page
 st.set_page_config(page_title="🎬 AptPath Reel Transcriber", layout="centered")
 st.title("🎬 AptPath Reel Transcriber")
 st.caption("Upload your video and get the transcript like a boss 😎")
 
+# API Key from Streamlit secrets
+openai.api_key = st.secrets["OPENAI_API_KEY"]
+
 # File uploader
 video_file = st.file_uploader("📤 Upload your video", type=["mp4", "mov", "avi", "mkv"])
 
+# Analyze important moments using GPT-3.5 Turbo
+def extract_key_moments(transcript_text):
+    prompt = f"""
+You are analyzing a video transcript. Identify the top 3-5 most engaging or insightful moments with their timestamps.
+
+Output format:
+1. [start_time] - [end_time]: [summary of event]
+2. ...
+Transcript:
+{transcript_text}
+"""
+
+    response = openai.ChatCompletion.create(
+        model="gpt-3.5-turbo",
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.5,
+        max_tokens=700
+    )
+
+    return response['choices'][0]['message']['content']
+
 if video_file:
-    # Create required directories
     for folder in ["uploads", "audio", "transcripts", "reels"]:
         os.makedirs(folder, exist_ok=True)
 
-    # Unique file naming
     unique_id = str(uuid.uuid4())[:8]
     video_path = os.path.join("uploads", f"{unique_id}_{video_file.name}")
 
-    # Save uploaded video
     with open(video_path, "wb") as f:
         f.write(video_file.read())
 
-    # Validate extension
-    valid_exts = [".mp4", ".mov", ".avi", ".mkv"]
-    if not any(video_path.lower().endswith(ext) for ext in valid_exts):
+    if not any(video_path.lower().endswith(ext) for ext in [".mp4", ".mov", ".avi", ".mkv"]):
         st.error("❌ Unsupported file format.")
         st.stop()
 
-    # Validate video file integrity using ffmpeg
     with st.spinner("🔍 Validating video file..."):
         validation_cmd = ["ffmpeg", "-v", "error", "-i", video_path, "-f", "null", "-"]
         result = subprocess.run(validation_cmd, stderr=subprocess.PIPE, text=True)
@@ -45,12 +64,7 @@ if video_file:
     # Step 1: Extract audio
     audio_path = os.path.join("audio", f"{unique_id}.wav")
     ffmpeg_cmd_audio = [
-        "ffmpeg",
-        "-i", video_path,
-        "-q:a", "0",
-        "-map", "a",
-        audio_path,
-        "-y"
+        "ffmpeg", "-i", video_path, "-q:a", "0", "-map", "a", audio_path, "-y"
     ]
 
     with st.spinner("🎧 Extracting audio from video..."):
@@ -61,15 +75,13 @@ if video_file:
             st.error("❌ Audio extraction failed.")
             st.stop()
 
-    # Step 2: Transcribe audio with Whisper
+    # Step 2: Transcribe using Whisper
     with st.spinner("🧠 Transcribing audio using Whisper..."):
         try:
-            model = whisper.load_model("base")  # You can upgrade to "medium" or "large"
+            model = whisper.load_model("base")  # you can upgrade to "medium" or "large"
             result = model.transcribe(audio_path)
-
             segments = result["segments"]
 
-            # Save and display timestamped transcript
             timestamped_transcript = ""
             for seg in segments:
                 start = round(seg["start"], 2)
@@ -77,7 +89,6 @@ if video_file:
                 text = seg["text"].strip()
                 timestamped_transcript += f"[{start:.2f} - {end:.2f}] {text}\n"
 
-            # Save to file
             transcript_path = os.path.join("transcripts", f"{unique_id}.txt")
             with open(transcript_path, "w", encoding="utf-8") as f:
                 f.write(timestamped_transcript)
@@ -89,7 +100,16 @@ if video_file:
             st.error(f"❌ Whisper transcription failed: {str(e)}")
             st.stop()
 
-    # Step 3: Convert to Reel format (1080x1920)
+    # Step 3: Analyze Key Moments with GPT
+    with st.spinner("📊 Analyzing transcript for key reel moments..."):
+        try:
+            key_moments = extract_key_moments(timestamped_transcript)
+            st.subheader("🌟 Top Reel-Worthy Moments")
+            st.text_area("🎯 Important Segments", key_moments, height=300)
+        except Exception as e:
+            st.error(f"❌ GPT analysis failed: {str(e)}")
+
+    # Step 4: Convert to Reel Format
     reel_path = os.path.join("reels", f"reel_{unique_id}.mp4")
     ffmpeg_cmd_reel = [
         "ffmpeg",
