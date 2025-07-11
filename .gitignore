@@ -5,3 +5,5 @@ transcripts/
 *.wav
 *.srt
 *.txt
+
+.streamlit/secrets.toml
