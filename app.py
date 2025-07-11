@@ -3,20 +3,20 @@ import os
 import subprocess
 import uuid
 import whisper
-import openai
+import google.generativeai as genai  # ✅ NEW IMPORT
 
 # Configure page
 st.set_page_config(page_title="🎬 AptPath Reel Transcriber", layout="centered")
 st.title("🎬 AptPath Reel Transcriber")
 st.caption("Upload your video and get the transcript like a boss 😎")
 
-# API Key from Streamlit secrets
-openai.api_key = st.secrets["OPENAI_API_KEY"]
+# API Key from Streamlit secrets (for Gemini)
+genai.configure(api_key=st.secrets["GEMINI_API_KEY"])  # ✅ USE GEMINI KEY FROM secrets.toml
 
 # File uploader
 video_file = st.file_uploader("📤 Upload your video", type=["mp4", "mov", "avi", "mkv"])
 
-# Analyze important moments using GPT-3.5 Turbo
+# ✅ Gemini version of extract_key_moments
 def extract_key_moments(transcript_text):
     prompt = f"""
 You are analyzing a video transcript. Identify the top 3-5 most engaging or insightful moments with their timestamps.
@@ -27,15 +27,9 @@ Output format:
 Transcript:
 {transcript_text}
 """
-
-    response = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.5,
-        max_tokens=700
-    )
-
-    return response['choices'][0]['message']['content']
+    model = genai.GenerativeModel("gemini-1.5-flash")
+    response = model.generate_content(prompt)
+    return response.text
 
 if video_file:
     for folder in ["uploads", "audio", "transcripts", "reels"]:
@@ -78,7 +72,7 @@ if video_file:
     # Step 2: Transcribe using Whisper
     with st.spinner("🧠 Transcribing audio using Whisper..."):
         try:
-            model = whisper.load_model("base")  # you can upgrade to "medium" or "large"
+            model = whisper.load_model("base")  # upgrade to "medium" or "large" if needed
             result = model.transcribe(audio_path)
             segments = result["segments"]
 
@@ -100,14 +94,14 @@ if video_file:
             st.error(f"❌ Whisper transcription failed: {str(e)}")
             st.stop()
 
-    # Step 3: Analyze Key Moments with GPT
+    # Step 3: Analyze Key Moments with Gemini
     with st.spinner("📊 Analyzing transcript for key reel moments..."):
         try:
             key_moments = extract_key_moments(timestamped_transcript)
             st.subheader("🌟 Top Reel-Worthy Moments")
             st.text_area("🎯 Important Segments", key_moments, height=300)
         except Exception as e:
-            st.error(f"❌ GPT analysis failed: {str(e)}")
+            st.error(f"❌ Gemini analysis failed: {str(e)}")
 
     # Step 4: Convert to Reel Format
     reel_path = os.path.join("reels", f"reel_{unique_id}.mp4")
