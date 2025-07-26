@@ -7,3 +7,14 @@ transcripts/
 *.txt
 
 .streamlit/secrets.toml
+
+# Python virtual environment
+.venv/
+__pycache__/
+*.pyc
+
+# OS files
+.DS_Store
+
+# Logs and caches
+*.log
