@@ -151,5 +151,5 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             st.success("🎥 Reel with subtitles ready to rock!")
             st.video(reel_path)
         except subprocess.CalledProcessError as e:
-            st.error("⚠️ Failed to convert video to reel format with subtitles.")
+            st.error("⚠ Failed to convert video to reel format with subtitles.")
             st.text(str(e))
