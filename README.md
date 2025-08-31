@@ -30,8 +30,8 @@ app.py # Main Streamlit app
 ## 🚀 Getting Started
 
 1. Clone this repo  
-   git clone https://github.com/yourusername/reel-generator.git
-   cd reel-generator
+   git clone https://github.com/username/AptPath_Reel.git
+   cd AptPath_Reel
 2. Install dependencies
    pip install -r requirements.txt
 3. Add your Gemini API Key to .streamlit/secrets.toml:
